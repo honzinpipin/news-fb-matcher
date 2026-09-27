@@ -10,7 +10,7 @@ Celá instalace trvá asi 15 minut. První zpracování dat pak běží dalšíc
 
 | Co | K čemu | Povinné |
 |---|---|---|
-| Odkaz na GitHub repozitář | stažení projektu | ano |
+| **GitHub účet s přístupem** k repozitáři [honzinpipin/news-fb-matcher](https://github.com/honzinpipin/news-fb-matcher) | stažení projektu (repozitář je soukromý) | ano |
 | **OpenAI API klíč** | AI rozbor článků, příspěvků a obrázků | ano |
 | **Bright Data API klíč** | stahování příspěvků z Facebooku | ano, pokud chceš FB příspěvky |
 | **Telegram bot token** | číselné ID Telegram kanálů v reportu | ne |
@@ -60,13 +60,31 @@ Mělo by se vypsat např. `Python 3.12.x` a `git version 2.x`.
 
 ## 3. Stáhni projekt a nainstaluj knihovny
 
-Projekt se stáhne do složky Dokumenty. Místo `ODKAZ_NA_GITHUB` vlož odkaz na repozitář, např. `https://github.com/uzivatel/news-fb-matcher.git`:
+### 3.1 Přístup k repozitáři
+
+Repozitář **<https://github.com/honzinpipin/news-fb-matcher>** je soukromý. Bez pozvánky ho neuvidíš (GitHub ukáže „404“).
+
+1. Pokud nemáš GitHub účet, založ si ho zdarma na <https://github.com/signup>.
+2. Pošli své GitHub uživatelské jméno autorovi projektu. Ten ti pošle pozvánku.
+3. Pozvánku přijmi: přijde e-mailem, nebo ji najdeš na <https://github.com/honzinpipin/news-fb-matcher/invitations>.
+
+### 3.2 Stažení (git clone)
+
+Projekt se stáhne do složky Dokumenty:
 
 ```powershell
 cd $HOME\Documents
-git clone ODKAZ_NA_GITHUB news-fb-matcher
+git clone https://github.com/honzinpipin/news-fb-matcher.git
 cd news-fb-matcher
 ```
+
+Protože je repozitář soukromý, **při prvním stažení se otevře okno „Connect to GitHub“**. Zvol **Sign in with your browser**, přihlas se ke GitHubu a potvrď **Authorize**. Git si přihlášení zapamatuje, takže se příště ptát nebude.
+
+Kontrola: příkaz `dir` ve složce `news-fb-matcher` vypíše mimo jiné `NAVOD.md`, `requirements.txt` a složku `app`.
+
+> **Bez Gitu (jen pro jednorázové vyzkoušení):** na stránce repozitáře klikni na zelené tlačítko **Code → Download ZIP**, rozbal archiv do `Dokumenty\news-fb-matcher` a v PowerShellu přejdi do této složky (`cd $HOME\Documents\news-fb-matcher`). Aktualizace přes `git pull` (kapitola 10) pak ale nebudou fungovat.
+
+### 3.3 Instalace knihoven
 
 Vytvoř pro projekt vlastní prostředí Pythonu, aby se knihovny nemíchaly s ničím jiným, a nainstaluj do něj knihovny:
 
@@ -247,26 +265,23 @@ Data (`data\`) i klíče (`.env`) zůstanou zachované.
 | Bright Data: *Customer is not active* | Účet není ověřený, přidej platební metodu (kapitola 4.2). |
 | Běh skončil stavem `error` | Otevři stránku **Běhy**. V logu je napsáno, který krok selhal a proč. |
 | Web nejde přidat („nenašel jsem feed“) | Web nemá RSS ani sitemapu. Zkus zadat přímo adresu jeho RSS feedu. |
+| `git clone` hlásí *Repository not found* | Repozitář je soukromý. Nejdřív přijmi pozvánku (kapitola 3.1) a přihlas se ke správnému GitHub účtu. Když se okno s přihlášením neukáže, spusť `git credential-manager github login`. |
 
 ---
 
-## Pro autora: nahrání projektu na GitHub
+## Pro autora: správa repozitáře
 
-Nahrávat se má jen kód. Data a klíče ne, o to se stará `.gitignore`. Ve složce projektu:
+Repozitář: **<https://github.com/honzinpipin/news-fb-matcher>** (soukromý, větev `main`).
+
+**Přidání člověka, který má projekt používat:** na GitHubu v repozitáři otevři **Settings → Collaborators → Add people**, zadej jeho GitHub jméno a pošli pozvánku. Role *Read* stačí na stažení a aktualizace. API klíče mu pošli zvlášť, ne přes GitHub.
+
+**Nahrání dalších změn** (ve složce projektu):
 
 ```powershell
-git init
 git add .
 git status
+git commit -m "Popis změny"
+git push
 ```
 
-Ve výpisu `git status` **nesmí být** `.env` ani nic ze složky `data/`. Pak:
-
-```powershell
-git commit -m "news-fb-matcher"
-git branch -M main
-git remote add origin ODKAZ_NA_GITHUB
-git push -u origin main
-```
-
-Repozitář na GitHubu doporučuji nastavit jako **Private**. API klíče pošli příjemci zvlášť, ne přes GitHub.
+Ve výpisu `git status` **nesmí být** `.env` ani nic ze složky `data/`. Obojí hlídá `.gitignore`, ale je dobré se podívat.

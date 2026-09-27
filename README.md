@@ -17,6 +17,8 @@ Porovnává články ze zpravodajského webu s příspěvky z Facebooku a hledá
 Stručně (Windows, PowerShell, Python 3.12):
 
 ```powershell
+git clone https://github.com/honzinpipin/news-fb-matcher.git
+cd news-fb-matcher
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env   # doplň OPENAI_API_KEY, BRIGHTDATA_TOKEN, (TELEGRAM_BOT_TOKEN)
