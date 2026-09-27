@@ -1,0 +1,89 @@
+# Konfigurace news-fb-matcher
+
+[app]
+db_path = "data/matcher.db"
+host = "127.0.0.1"
+port = 8010
+timezone = "Europe/Prague"
+
+# ---------------------------------------------------------------------------
+# Zdroje (weby, FB profily a jejich vazby) se spravuji ve webu: stranka Zdroje.
+# ---------------------------------------------------------------------------
+
+[facebook]
+provider = "brightdata"
+dataset_id = "gd_lkaxegm826bjpoo9m5" # Facebook - Pages Posts by Profile URL
+backfill_days = 14                 # pri prvnim behu stahnout 14 dni zpetne
+max_posts_per_run = 150            # pojistka (bezne ~15–30 prispevku denne)
+backfill_max_posts = 600           # limit pro uvodni stazeni 14 dni
+monthly_free_records = 5000        # free kredit Bright Data, obnovuje se 1. v mesici
+stop_at_free_limit = true          # po vycerpani free kreditu nestahovat (nic neplatit)
+warn_at = 0.8                      # varovani ve webu pri 80 % kreditu
+poll_interval_s = 15
+timeout_min = 30
+# Token: BRIGHTDATA_TOKEN v .env nebo promenna prostredi
+
+[news]
+lookback_days = 3          # jak stare clanky z feedu se jeste stahuji
+first_lookback_days = 14   # u nove pridaneho webu stahnout 14 dni zpetne (pokud je feed ma)
+max_new_per_run = 1000     # pojistka; news-pravda vydava ~440 clanku denne
+request_delay_s = 0.5      # pauza mezi stahovanim clanku (slusnost k serveru)
+min_text_chars = 200       # kratsi text z clanku -> pouzije se perex z feedu
+
+# ---------------------------------------------------------------------------
+# OpenAI
+# ---------------------------------------------------------------------------
+# Klic OPENAI_API_KEY se cte ze souboru .env (viz .env.example) nebo z promenne prostredi.
+[openai]
+base_url = "https://api.openai.com/v1"
+model = "gpt-5.6-luna"
+embedding_model = "text-embedding-3-small"
+timeout_s = 120
+api_key = ""  # nepouzivat – klic patri do .env (OPENAI_API_KEY)
+
+[extract]
+min_chars = 20             # kratsi prispevky (jen fotka, emoji) se preskoci
+max_input_chars = 12000
+max_per_run = 1200          # ~440 clanku + ~30 prispevku denne; prvni beh ~900
+workers = 4
+
+# ---------------------------------------------------------------------------
+# Skorovani bez AI (vrstva 2)
+# ---------------------------------------------------------------------------
+[matching]
+window_days = 7            # clanek se porovnava jen s prispevky +-7 dni
+time_tau_days = 2.0        # S5 = exp(-|dni| / tau)
+cos_low = 0.25             # kosinova podobnost -> S1 (preskalovani)
+cos_high = 0.65
+store_min_score = 0.30     # slabsi pary se do DB neukladaji
+drop_semantic_below = 0.15 # S1 pod timto a zadna spolecna entita -> zahodit
+shingle_size = 5
+citation_min_shingles = 3
+citation_min_score = 0.80
+entity_common_share = 0.05 # entita ve >= 5 % vsech textu (Rusko, NATO...) se do S2 nepocita
+entity_rare_df = 3         # entita v <= 3 textech ma plnou vahu
+
+[matching.weights]         # berou se jako pomery (skore se deli souctem vah)
+semantic = 0.40
+entities = 0.22
+keywords = 0.09
+numbers = 0.09
+time = 0.20
+
+# ---------------------------------------------------------------------------
+# AI posouzeni (vrstva 3)
+# ---------------------------------------------------------------------------
+[judge]
+min_score = 0.55           # AI posoudi VSECHNY pary s timto skore a vyssim (web, report i Zdroje pouzivaji stejny prah)
+max_per_run = 500          # jen pojistka nakladu; zbytek se posoudi pri dalsim behu
+max_article_chars = 6000
+workers = 4
+
+# ---------------------------------------------------------------------------
+# PDF report (shrnuti za obdobi)
+# ---------------------------------------------------------------------------
+[report]
+period_days = 7            # delka obdobi; automaticky se vytvori, kdyz od posledniho uplynulo tolik dni
+auto = true                # vytvaret automaticky na konci behu
+max_pairs_listed = 60      # kolik paru vypsat v tabulce (shody vzdy vsechny)
+# Telegram ID kanalu: TELEGRAM_BOT_TOKEN v .env (bez nej jen nazev a odberatele)

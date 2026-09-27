@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Shody článků a příspěvků{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <a class="brand" href="/">Shody <span>článek × příspěvek</span></a>
+    <nav>
+      <a href="/">Shody</a>
+      <a href="/items?kind=article">Články</a>
+      <a href="/items?kind=post">Příspěvky</a>
+      <a href="/sources">Zdroje</a>
+      <a href="/reports">Shrnutí</a>
+      <a href="/runs">Běhy</a>
+    </nav>
+    <form method="post" action="/run">
+      <button class="btn primary" {% if running %}disabled{% endif %}>
+        {% if running %}Běží…{% else %}Spustit teď{% endif %}
+      </button>
+    </form>
+  </div>
+</header>
+<main class="wrap">
+  {% if not ai_ready %}
+  <div class="notice warn">Chybí <code>OPENAI_API_KEY</code> – běh jen stáhne data, AI extrakce a párování se přeskočí.</div>
+  {% endif %}
+  {% if bd and not bd.ready %}
+  <div class="notice warn">Chybí <code>BRIGHTDATA_TOKEN</code> – příspěvky z Facebooku se nestahují (funguje jen ruční import).</div>
+  {% elif bd and bd.over %}
+  <div class="notice warn">Bright Data: vyčerpaný měsíční free kredit ({{ bd.used }} / {{ bd.limit }}). Stahování příspěvků stojí do obnovení 1. dne v měsíci.</div>
+  {% elif bd and bd.warn %}
+  <div class="notice warn">Bright Data: spotřebováno {{ bd.used }} z {{ bd.limit }} free záznamů tento měsíc.</div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

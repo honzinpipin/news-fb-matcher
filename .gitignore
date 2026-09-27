@@ -1,0 +1,16 @@
+# Tajné klíče
+.env
+
+# Data aplikace (databáze, obrázky, reporty, logy)
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Nastavení editoru / Claude
+.claude/
+.vscode/
+.idea/

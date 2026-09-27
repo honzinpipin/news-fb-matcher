@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{% if kind == 'article' %}Články{% else %}Příspěvky{% endif %}</h2>
+<form method="get" class="filters">
+  <input type="hidden" name="kind" value="{{ kind }}">
+  <label class="search">Hledat <input type="search" name="q" value="{{ q }}" placeholder='Hledat… např. Babiš, "cena nafty", Rakušan NEBO STAN, -Zelenskyj'></label>
+  {% if sources|length > 1 %}
+  <label>Zdroj
+    <select name="source" onchange="this.form.submit()">
+      <option value="0">všechny</option>
+      {% for s in sources %}<option value="{{ s.id }}" {% if source == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <button class="btn">Hledat</button>
+  {% if q %}<a class="btn ghost" href="/items?kind={{ kind }}&source={{ source }}">zrušit hledání</a>{% endif %}
+</form>
+{% if search_err %}<div class="notice warn">{{ search_err }}</div>{% endif %}
+{% if total is not none %}<p class="muted">Nalezeno: {{ total }}</p>{% endif %}
+{% if not rows %}<p class="empty">{% if q %}Nic nenalezeno.{% else %}Zatím nic.{% endif %}</p>{% endif %}
+<div class="list">
+{% for r in rows %}
+  <div class="card item">
+    <div class="meta">
+      <small>{{ r.source_name }} · {{ r.published_at|local }}</small>
+      <span class="tag st-{{ r.status }}">{{ r.status }}</span>
+      {% if r.origin %}<a href="{{ r.origin }}" target="_blank" rel="noopener">{{ r.origin|short_origin }}</a>{% endif %}
+      {% if r.n_matches %}<span class="tag">{{ r.n_matches }} párů</span>{% endif %}
+      {% if not r.url.startswith('manual:') %}<a href="{{ r.url }}" target="_blank" rel="noopener">originál ↗</a>{% endif %}
+    </div>
+    {% set imgs = r.images|jl %}{% if imgs %}<a href="{{ imgs[0]|media }}" target="_blank"><img class="thumb" src="{{ imgs[0]|media }}" alt=""></a>{% endif %}
+    <strong>{% if r.title %}{{ r.title|hl(q) }}{% else %}{{ r.text|snip(q) if q else r.text[:160] ~ ('…' if r.text|length > 160 else '') }}{% endif %}</strong>
+    {% if q and r.title %}<p class="snip">{{ (r.text ~ ' ' ~ (r.image_text or ''))|snip(q) }}</p>
+    {% elif q and r.image_text %}<p class="snip"><small>text z obrázku:</small> {{ r.image_text|snip(q) }}</p>{% endif %}
+    {% if r.summary %}<p>{{ r.summary|hl(q) }}</p>
+      <p class="chips">{% for e in r.entities|jl %}<span class="chip">{{ e|hl(q) }}</span>{% endfor %}
+      {% for k in r.keywords|jl %}<span class="chip kw">{{ k }}</span>{% endfor %}
+      {% for x in r.inferred_persons|jl %}<span class="chip inferred" title="vodítko: {{ x.cue }}">{{ x.name }}?</span>{% endfor %}</p>
+    {% endif %}
+    {% if r.error %}<p class="err">{{ r.error }}</p>{% endif %}
+  </div>
+{% endfor %}
+</div>
+<p class="pager">
+  {% if page > 1 %}<a href="/items?kind={{ kind }}&source={{ source }}&q={{ q|urlencode }}&page={{ page - 1 }}">← novější</a>{% endif %}
+  {% if has_next %}<a href="/items?kind={{ kind }}&source={{ source }}&q={{ q|urlencode }}&page={{ page + 1 }}">starší →</a>{% endif %}
+</p>
+{% endblock %}

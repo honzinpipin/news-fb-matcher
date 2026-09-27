@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Zdroje{% endblock %}
+{% block content %}
+{% if verifying %}<meta http-equiv="refresh" content="8">{% endif %}
+{% if msg %}<div class="notice">{{ msg }}</div>{% endif %}
+{% if err %}<div class="notice warn">{{ err }}</div>{% endif %}
+
+<h2>Vazby <small>– co se s čím porovnává</small></h2>
+<section class="card">
+  {% if news and fb %}
+  <form method="post" action="/links" class="row-form">
+    <select name="news_id" required>
+      <option value="">— zpravodajský web —</option>
+      {% for s in news %}<option value="{{ s.id }}">{{ s.name }}{% if not s.enabled %} (vypnutý){% endif %}</option>{% endfor %}
+    </select>
+    <span class="link-arrow">↔</span>
+    <select name="fb_id" required>
+      <option value="">— Facebook profil —</option>
+      {% for s in fb %}<option value="{{ s.id }}">{{ s.name }}{% if not s.enabled %} (vypnutý){% endif %}</option>{% endfor %}
+    </select>
+    <button class="btn primary">Propojit</button>
+  </form>
+  {% else %}
+  <p class="muted">Pro vytvoření vazby přidej aspoň jeden web a jeden profil.</p>
+  {% endif %}
+
+  {% if links %}
+  <table class="table plain">
+    <tr><th>Web</th><th></th><th>Profil</th><th>Párů ≥ práh</th><th>Shod</th><th></th></tr>
+    {% for l in links %}
+    <tr class="{% if not l.active %}muted{% endif %}">
+      <td>{{ l.news_name }}</td><td>↔</td><td>{{ l.fb_name }}</td>
+      <td><a href="/?vf=1&link={{ l.news_id }}-{{ l.fb_id }}">{{ l.n_pairs }}</a></td>
+      <td><a href="/?verdict=shoda&link={{ l.news_id }}-{{ l.fb_id }}">{{ l.n_shoda }}</a></td>
+      <td class="actions">
+        {% if not l.active %}<small>neaktivní (zdroj vypnut)</small>{% endif %}
+        <form method="post" action="/links/delete" data-confirm="Zrušit vazbu {{ l.news_name }} ↔ {{ l.fb_name }}? Její páry zmizí." onsubmit="return confirm(this.dataset.confirm)">
+          <input type="hidden" name="news_id" value="{{ l.news_id }}"><input type="hidden" name="fb_id" value="{{ l.fb_id }}">
+          <button class="btn ghost">zrušit</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</section>
+
+<div class="two">
+<section class="card">
+  <h3>Zpravodajské weby</h3>
+  <form method="post" action="/sources/news" class="stack" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Kontroluji web…'">
+    <label>URL webu<input name="url" required placeholder="https://…"></label>
+    <label>Název (nepovinné)<input name="name" placeholder="doplní se z webu"></label>
+    <details><summary>Pokročilé</summary>
+      <label>Selektor bloku s textem článku<input name="content_selector" placeholder="např. .article__text"></label>
+      <label>HTML atribut s původním zdrojem<input name="origin_attr" placeholder="např. data-source-url"></label>
+    </details>
+    <button class="btn primary">Přidat web</button>
+  </form>
+
+  {% for s in news %}
+  <div class="source {% if not s.enabled %}off{% endif %}">
+    <div class="source-head">
+      <strong>{{ s.name }}</strong>
+      {% if not s.enabled %}<span class="tag">vypnutý</span>{% elif not s.n_links %}<span class="tag">bez vazby – nestahuje se</span>{% endif %}
+    </div>
+    <small><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.url }}</a></small><br>
+    <small>feed: {{ s.feed_url or '—' }}</small><br>
+    <small>{{ s.n_items }} článků · ~{{ s.per_day }} denně{% if s.last_item %} · poslední {{ s.last_item|local }}{% endif %}</small>
+    {% if s.content_selector or s.origin_attr %}<br><small class="muted">selektor: {{ s.content_selector or '—' }} · zdroj: {{ s.origin_attr or '—' }}</small>{% endif %}
+    {% if s.state.sample %}
+    <details><summary>Ukázka vytaženého textu</summary>
+      <p><a href="{{ s.state.sample.url }}" target="_blank" rel="noopener">{{ s.state.sample.title }}</a>
+        {% if s.state.sample.origin %}<br><small>původní zdroj: {{ s.state.sample.origin|short_origin }}</small>{% endif %}</p>
+      <div class="fulltext">{{ s.state.sample.text[:800] }}{% if s.state.sample.text|length > 800 %}…{% endif %}</div>
+    </details>
+    {% endif %}
+    <div class="source-actions">
+      <form method="post" action="/sources/{{ s.id }}/toggle"><button class="btn">{% if s.enabled %}Vypnout{% else %}Zapnout{% endif %}</button></form>
+      <form method="post" action="/sources/{{ s.id }}/delete" data-confirm="Smazat web {{ s.name }} včetně {{ s.n_items }} článků, párů a posouzení? Nelze vrátit." onsubmit="return confirm(this.dataset.confirm)"><button class="btn ghost danger">Smazat</button></form>
+    </div>
+  </div>
+  {% else %}<p class="muted">Zatím žádný web.</p>{% endfor %}
+</section>
+
+<section class="card">
+  <h3>Facebook profily</h3>
+  <form method="post" action="/sources/fb" class="stack">
+    <label>URL profilu nebo stránky<input name="url" required placeholder="https://www.facebook.com/…"></label>
+    <label>Název (nepovinné)<input name="name" placeholder="doplní se při ověření"></label>
+    <button class="btn primary">Přidat profil</button>
+    <small class="muted">Ověření stáhne 1 příspěvek (1 záznam Bright Data). První běh po propojení stáhne 14 dní zpětně.</small>
+  </form>
+
+  {% for s in fb %}
+  <div class="source {% if not s.enabled %}off{% endif %}">
+    <div class="source-head">
+      <strong>{{ s.name }}</strong>
+      {% if s.state.verify == 'pending' %}<span class="tag">ověřuji…</span>
+      {% elif s.state.verify == 'error' %}<span class="tag bad">ověření selhalo</span>
+      {% elif s.state.verify == 'ok' %}<span class="tag good">ověřeno</span>{% endif %}
+      {% if not s.enabled %}<span class="tag">vypnutý</span>{% elif not s.n_links %}<span class="tag">bez vazby – nestahuje se</span>{% endif %}
+    </div>
+    <small><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.url }}</a></small><br>
+    <small>{{ s.n_items }} příspěvků · ~{{ s.per_day }} denně{% if s.last_item %} · poslední {{ s.last_item|local }}{% endif %}</small>
+    {% if s.state.verify == 'error' %}<p class="err">{{ s.state.verify_msg }}</p>{% endif %}
+    <div class="source-actions">
+      <form method="post" action="/sources/{{ s.id }}/toggle"><button class="btn">{% if s.enabled %}Vypnout{% else %}Zapnout{% endif %}</button></form>
+      {% if s.state.verify == 'error' %}<form method="post" action="/sources/{{ s.id }}/verify"><button class="btn">Ověřit znovu</button></form>{% endif %}
+      <form method="post" action="/sources/{{ s.id }}/delete" data-confirm="Smazat profil {{ s.name }} včetně {{ s.n_items }} příspěvků, obrázků, párů a posouzení? Nelze vrátit." onsubmit="return confirm(this.dataset.confirm)"><button class="btn ghost danger">Smazat</button></form>
+    </div>
+  </div>
+  {% else %}<p class="muted">Zatím žádný profil.</p>{% endfor %}
+</section>
+</div>
+{% endblock %}

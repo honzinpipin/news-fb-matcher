@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+{% if running %}<meta http-equiv="refresh" content="5">{% endif %}
+<h2>Běhy</h2>
+{% if not runs %}<p class="empty">Zatím žádný běh.</p>{% endif %}
+{% for r in runs %}
+<details class="card run" {% if loop.first %}open{% endif %}>
+  <summary>
+    <span class="tag st-{{ r.status }}">{{ r.status }}</span>
+    <b>{{ r.started_at|local }}</b> · {{ r.trigger }}
+    {% if r.summary %}<small>· {{ r.summary }}</small>{% endif %}
+  </summary>
+  <pre>{{ r.log }}</pre>
+</details>
+{% endfor %}
+{% endblock %}

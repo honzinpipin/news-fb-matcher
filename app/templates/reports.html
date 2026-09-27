@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Shrnutí{% endblock %}
+{% block content %}
+{% if job.running %}<meta http-equiv="refresh" content="6">{% endif %}
+<h2>Shrnutí</h2>
+{% if msg and not job.running %}<div class="notice">{{ msg }}</div>{% endif %}
+{% if job.running %}<div class="notice">Vytvářím report za {{ job.label }}… stránka se sama obnoví.</div>{% endif %}
+{% if err %}<div class="notice warn">{{ err }}</div>{% endif %}
+
+<section class="card">
+  <h3>Vytvořit report teď</h3>
+  <form method="post" action="/reports" class="row-form" id="report-form">
+    <label class="check"><input type="radio" name="days" value="7" checked> 7 dní</label>
+    <label class="check"><input type="radio" name="days" value="14"> 14 dní</label>
+    <label class="check"><input type="radio" name="days" value="30"> 30 dní</label>
+    <label class="check"><input type="radio" name="days" value="custom"> vlastní:</label>
+    <input type="date" name="date_from" value="{{ week_ago }}" max="{{ today }}" onfocus="this.form.days.value='custom'">
+    <span class="muted">–</span>
+    <input type="date" name="date_to" value="{{ today }}" max="{{ today }}" onfocus="this.form.days.value='custom'">
+    <button class="btn primary" {% if job.running %}disabled{% endif %}>Vytvořit</button>
+  </form>
+  <small class="muted">Automaticky se report vytváří každých {{ period_days }} dní na konci běhu
+    {%- if next_auto %} (další nejdřív {{ next_auto|local }}){% endif %}.</small>
+</section>
+
+<h3>Historie reportů</h3>
+{% if not reports %}<p class="empty">Zatím žádný report.</p>{% endif %}
+<div class="list">
+{% for r in reports %}
+  <div class="card report">
+    <div class="report-main">
+      <div>
+        <strong>{{ r.period_start|local_date }} – {{ r.period_end|local_date }}</strong>
+        <span class="tag">{% if r.trigger == 'auto' %}automaticky{% else %}ručně{% endif %}</span>
+        <br><small class="muted">vytvořeno {{ r.created_at|local }}</small>
+      </div>
+      <div class="report-stats">
+        <span><b>{{ r.stats.shoda or 0 }}</b> shod</span>
+        <span><b>{{ r.stats.souvisejici or 0 }}</b> souvisejících</span>
+        <span><b>{{ r.stats.articles or 0 }}</b> článků</span>
+        <span><b>{{ r.stats.posts or 0 }}</b> příspěvků</span>
+      </div>
+    </div>
+    {% if r.stats.topics %}
+    <p class="chips">{% for t in r.stats.topics[:6] %}<span class="chip">{{ t.name }} ({{ t.pairs }})</span>{% endfor %}</p>
+    {% endif %}
+    <div class="source-actions">
+      {% if r.exists %}
+      <a class="btn primary" href="/reports/{{ r.id }}/pdf" target="_blank" rel="noopener">Otevřít PDF</a>
+      <a class="btn" href="/reports/{{ r.id }}/pdf?download=1">Stáhnout</a>
+      {% else %}<span class="err">Soubor chybí</span>{% endif %}
+      <form method="post" action="/reports/{{ r.id }}/delete" data-confirm="Smazat report {{ r.period_start|local_date }} – {{ r.period_end|local_date }}?" onsubmit="return confirm(this.dataset.confirm)">
+        <button class="btn ghost danger">Smazat</button>
+      </form>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

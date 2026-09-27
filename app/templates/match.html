@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Shoda {{ '%.2f'|format(m.score) }}{% endblock %}
+{% block content %}
+<p><a href="javascript:history.back()">← zpět</a></p>
+
+<section class="card head">
+  <div class="score big {% if m.score >= 0.75 %}hi{% elif m.score >= 0.5 %}mid{% else %}lo{% endif %}">{{ '%.2f'|format(m.score) }}</div>
+  <div>
+    <div class="tags">
+      {% if j %}<span class="tag v-{{ j.verdict }}">{{ VERDICT_LABELS[j.verdict] }}</span>
+        <span class="tag">{{ TYPE_LABELS[j.match_type] }}</span>
+      {% else %}<span class="tag muted">AI zatím neposoudila</span>{% endif %}
+      {% if m.rule %}<span class="tag rule">{{ RULE_LABELS[m.rule] }}</span>{% endif %}
+      <span class="first">{% if first == 'post' %}Příspěvek byl dřív{% else %}Článek byl dřív{% endif %}</span>
+    </div>
+    {% if j %}
+      <p class="expl">{{ j.explanation }}</p>
+      {% set pts = j.shared_points|jl %}
+      {% if pts %}<ul class="points">{% for p in pts %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
+    {% endif %}
+    <form method="post" action="/feedback/{{ m.article_id }}/{{ m.post_id }}" class="fb">
+      <input type="hidden" name="back" value="/match/{{ m.article_id }}/{{ m.post_id }}">
+      <span>Tvoje hodnocení:</span>
+      <button class="btn {% if m.rating == 1 %}on{% endif %}" name="rating" value="1">👍 skutečná shoda</button>
+      <button class="btn {% if m.rating == -1 %}on{% endif %}" name="rating" value="-1">👎 není shoda</button>
+      {% if m.rating %}<button class="btn ghost" name="rating" value="0">zrušit</button>{% endif %}
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <h3>Rozpad skóre</h3>
+  <table class="signals">
+    {% for name, val, weight, note in signals %}
+    <tr>
+      <td>{{ name }}<br><small>{{ note }}</small></td>
+      <td class="bar"><div style="width: {{ (val * 100)|round }}%"></div></td>
+      <td class="num">{{ '%.2f'|format(val) }}</td>
+      <td class="num muted">× {{ weight }}</td>
+    </tr>
+    {% endfor %}
+    <tr><td>S6 Doslovná shoda<br><small>společných n-tic slov</small></td><td></td><td class="num">{{ m.shingles }}</td><td></td></tr>
+  </table>
+</section>
+
+<div class="two">
+  {% for key, label, ex in [('a', 'Článek', a_ex), ('p', 'Příspěvek', p_ex)] %}
+  {% set it = a if key == 'a' else p %}
+  <section class="card">
+    <small>{{ label }} · {{ m.a_source if key == 'a' else m.p_source }} · {{ it.published_at|local }}</small>
+    <h3>{% if it.title %}{{ it.title }}{% else %}Příspěvek{% endif %}</h3>
+    {% if not it.url.startswith('manual:') %}<p><a href="{{ it.url }}" target="_blank" rel="noopener">otevřít originál ↗</a></p>{% endif %}
+    {% if it.origin %}<p><b>Původní zdroj:</b> <a href="{{ it.origin }}" target="_blank" rel="noopener">{{ it.origin|short_origin }}</a></p>{% endif %}
+    {% for img in it.images|jl %}<a href="{{ img|media }}" target="_blank"><img class="post-img" src="{{ img|media }}" alt="obrázek příspěvku"></a>{% endfor %}
+    {% if ex %}
+      <p><b>Shrnutí:</b> {{ ex.summary }}</p>
+      {% if ex.image_text %}<p><b>Text na obrázku:</b> {{ ex.image_text }}</p>{% endif %}
+      {% if ex.image_description %}<p><b>Obrázek:</b> {{ ex.image_description }}</p>{% endif %}
+      {% set inferred = ex.inferred_persons|jl %}
+      {% if inferred %}<p><b>Osoby odvozené z kontextu:</b>
+        {% for x in inferred %}<span class="chip inferred" title="vodítko: {{ x.cue }}">{{ x.name }}</span> <small>({{ x.cue }})</small> {% endfor %}</p>{% endif %}
+      <p><b>Hlavní teze:</b> {{ ex.main_claim }}</p>
+      <p class="chips">{% for e in ex.entities|jl %}<span class="chip">{{ e }}</span>{% endfor %}</p>
+      <p class="chips">{% for k in ex.keywords|jl %}<span class="chip kw">{{ k }}</span>{% endfor %}</p>
+      {% if ex.numbers|jl %}<p class="chips">{% for n in ex.numbers|jl %}<span class="chip num">{{ n }}</span>{% endfor %}</p>{% endif %}
+    {% endif %}
+    <details><summary>Celý text</summary><div class="fulltext">{{ it.text }}</div></details>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="stats">
+  <div class="stat"><b>{{ counts.get('article', 0) }}</b><span>článků</span></div>
+  <div class="stat"><b>{{ counts.get('post', 0) }}</b><span>příspěvků</span></div>
+  <div class="stat"><b>{{ pending }}</b><span>čeká na zpracování</span></div>
+  {% if bd %}<div class="stat"><b>{{ bd.used }} / {{ bd.limit }}</b><span>Bright Data tento měsíc</span></div>{% endif %}
+  <div class="stat"><b>{{ last_run.finished_at|local if last_run and last_run.finished_at else '—' }}</b>
+    <span>poslední běh{% if last_run %} · {{ last_run.status }}{% endif %}</span></div>
+</section>
+
+<form class="filters" method="get">
+  <label class="search">Hledat <input type="search" name="q" value="{{ f.q }}" placeholder='Hledat… např. Babiš, "cena nafty", Rakušan NEBO STAN, -Zelenskyj'></label>
+  <label>Min. skóre <input type="number" name="min_score" step="0.05" min="0" max="1" value="{{ f.min_score }}"></label>
+  <fieldset class="checks">
+    <legend>Verdikt AI</legend>
+    <input type="hidden" name="vf" value="1">
+    {% for v, l in [('shoda','shoda'), ('souvisejici_tema','související téma'), ('nesouvisi','nesouvisí'), ('neposouzeno','neposouzeno')] %}
+    <label class="check"><input type="checkbox" name="verdict" value="{{ v }}" {% if v in f.verdicts %}checked{% endif %}> {{ l }}</label>
+    {% endfor %}
+  </fieldset>
+  {% if links|length > 1 %}
+  <label>Vazba
+    <select name="link">
+      <option value="all">všechny</option>
+      {% for l in links %}<option value="{{ l.news_id }}-{{ l.fb_id }}" {% if f.link == l.news_id ~ '-' ~ l.fb_id %}selected{% endif %}>{{ l.news_name }} ↔ {{ l.fb_name }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <label>Posledních dní <input type="number" name="days" min="1" value="{{ f.days }}"></label>
+  <button class="btn">Filtrovat</button>
+</form>
+
+{% if search_err %}<div class="notice warn">{{ search_err }}</div>{% endif %}
+{% if not rows %}
+<p class="empty">Žádné shody pro zvolený filtr{% if f.q %} a hledaný výraz{% endif %}.</p>
+{% endif %}
+
+<div class="matches">
+{% for r in rows %}
+  <a class="match" href="/match/{{ r.article_id }}/{{ r.post_id }}">
+    <div class="score {% if r.score >= 0.75 %}hi{% elif r.score >= 0.5 %}mid{% else %}lo{% endif %}">{{ '%.2f'|format(r.score) }}</div>
+    <div class="body">
+      <div class="tags">
+        {% if r.verdict %}<span class="tag v-{{ r.verdict }}">{{ VERDICT_LABELS[r.verdict] }}</span>
+          <span class="tag">{{ TYPE_LABELS[r.match_type] }}</span>
+        {% else %}<span class="tag muted">neposouzeno</span>{% endif %}
+        {% if r.rule %}<span class="tag rule">{{ RULE_LABELS[r.rule] }}</span>{% endif %}
+        {% if r.rating == 1 %}<span class="tag">👍</span>{% elif r.rating == -1 %}<span class="tag">👎</span>{% endif %}
+        <span class="first">{% if r.p_pub < r.a_pub %}příspěvek byl dřív{% else %}článek byl dřív{% endif %}</span>
+      </div>
+      <div class="pair">
+        <div><small>{{ r.a_source }} · {{ r.a_pub|local }}{% if r.a_origin %} · {{ r.a_origin|short_origin }}{% endif %}</small><strong>{{ r.a_title|hl(f.q) }}</strong></div>
+        <div><small>{{ r.p_source }} · {{ r.p_pub|local }}</small><span class="clip">{{ r.p_text|snip(f.q) }}</span></div>
+      </div>
+      {% if r.explanation %}<p class="expl">{{ r.explanation }}</p>{% endif %}
+    </div>
+  </a>
+{% endfor %}
+</div>
+{% endblock %}
