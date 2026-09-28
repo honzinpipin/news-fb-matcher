@@ -90,13 +90,15 @@ Vytvoř pro projekt vlastní prostředí Pythonu, aby se knihovny nemíchaly s n
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+./.venv/Scripts/python.exe -m pip install --upgrade pip
+./.venv/Scripts/python.exe -m pip install -r requirements.txt
 ```
 
 Instalace knihoven trvá 1–3 minuty. Na konci nesmí být červená chybová hláška.
 
-> Python se v návodu vždy spouští přes `.\.venv\Scripts\python.exe`, takže není potřeba prostředí „aktivovat“. Tím se obejde častá chyba PowerShellu *„running scripts is disabled on this system“*.
+> Python se v návodu vždy spouští přes `./.venv/Scripts/python.exe`. Příkaz začíná **tečkou, lomítkem a tečkou** (`./.venv`), ne dvěma tečkami. Nejspolehlivější je příkazy kopírovat, ne přepisovat.
+>
+> Díky tomu není potřeba prostředí „aktivovat“ a obejde se častá chyba PowerShellu *„running scripts is disabled on this system“*.
 
 ---
 
@@ -150,7 +152,7 @@ TELEGRAM_BOT_TOKEN=...
 ## 5. Spuštění
 
 ```powershell
-.\.venv\Scripts\python.exe run_server.py
+./.venv/Scripts/python.exe run_server.py
 ```
 
 Až se vypíše `Uvicorn running on http://127.0.0.1:8010`, otevři v prohlížeči **<http://127.0.0.1:8010>**.
@@ -187,7 +189,7 @@ Když chceš hned porovnat celý uplynulý týden, spusť v **novém** okně Pow
 
 ```powershell
 cd $HOME\Documents\news-fb-matcher
-.\.venv\Scripts\python.exe backfill_articles.py --from 2026-09-20
+./.venv/Scripts/python.exe backfill_articles.py --from 2026-09-20
 ```
 
 Datum uprav podle potřeby. U news-pravda jde asi o 450 článků za den, tedy nezanedbatelnou spotřebu OpenAI (viz kapitola 9).
@@ -200,7 +202,7 @@ Po restartu počítače stačí:
 
 ```powershell
 cd $HOME\Documents\news-fb-matcher
-.\.venv\Scripts\python.exe run_server.py
+./.venv/Scripts/python.exe run_server.py
 ```
 
 a otevřít <http://127.0.0.1:8010>. Nová data stáhneš tlačítkem **Spustit teď**.
@@ -245,7 +247,7 @@ Skutečnou spotřebu OpenAI vidíš na <https://platform.openai.com/usage>. Kaž
 ```powershell
 cd $HOME\Documents\news-fb-matcher
 git pull
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+./.venv/Scripts/python.exe -m pip install -r requirements.txt
 ```
 
 Data (`data\`) i klíče (`.env`) zůstanou zachované.
@@ -258,8 +260,9 @@ Data (`data\`) i klíče (`.env`) zůstanou zachované.
 |---|---|
 | `py` / `python` / `git` *is not recognized* | Zavři a znovu otevři PowerShell. Pomůže to po každé instalaci. Když to nepomůže, přeinstaluj Python se zaškrtnutým „Add python.exe to PATH“. |
 | Po napsání `python` se otevře Microsoft Store | Používej `py -3.12` (viz kapitola 2), případně vypni v Nastavení → Aplikace → Aliasy spouštění aplikací položky „python.exe“. |
-| *running scripts is disabled on this system* | Nepoužívej `Activate.ps1`. Spouštěj vždy `.\.venv\Scripts\python.exe …` jako v návodu. |
-| `pip install` hlásí chybu | Zkontroluj internet. Spusť znovu `.\.venv\Scripts\python.exe -m pip install --upgrade pip` a potom instalaci knihoven. |
+| *The module '..venv' could not be loaded* nebo *'.venv' is not recognized* | Na začátku příkazu chybí `./`. Správně je `./.venv/Scripts/python.exe …` (tečka, lomítko, tečka), ne `..venv\…` ani `.venv\…`. Příkazy z návodu kopíruj. |
+| *running scripts is disabled on this system* | Nepoužívej `Activate.ps1`. Spouštěj vždy `./.venv/Scripts/python.exe …` jako v návodu. |
+| `pip install` hlásí chybu | Zkontroluj internet. Spusť znovu `./.venv/Scripts/python.exe -m pip install --upgrade pip` a potom instalaci knihoven. |
 | *address already in use* / port 8010 obsazen | Aplikace už běží v jiném okně. Buď ji použij, nebo ji tam vypni (Ctrl + C). Případně změň `port` v `config.toml`. |
 | Žluté varování „Chybí OPENAI_API_KEY“ | Soubor `.env` chybí, je jinde než v kořeni projektu, nebo je klíč špatně zapsaný. Po opravě aplikaci restartuj. |
 | Bright Data: *Customer is not active* | Účet není ověřený, přidej platební metodu (kapitola 4.2). |

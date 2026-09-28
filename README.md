@@ -20,10 +20,10 @@ Stručně (Windows, PowerShell, Python 3.12):
 git clone https://github.com/honzinpipin/news-fb-matcher.git
 cd news-fb-matcher
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+./.venv/Scripts/python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env   # doplň OPENAI_API_KEY, BRIGHTDATA_TOKEN, (TELEGRAM_BOT_TOKEN)
-.\.venv\Scripts\python.exe run_server.py      # -> http://127.0.0.1:8010
-.\.venv\Scripts\python.exe run_nightly.py     # jeden běh ručně (= tlačítko „Spustit teď“)
+./.venv/Scripts/python.exe run_server.py      # -> http://127.0.0.1:8010
+./.venv/Scripts/python.exe run_nightly.py     # jeden běh ručně (= tlačítko „Spustit teď“)
 ```
 
 Klíče se čtou ze souboru `.env` (není v gitu) nebo z proměnných prostředí. Noční běh přes Plánovač úloh: viz NAVOD.md, kapitola 8.
