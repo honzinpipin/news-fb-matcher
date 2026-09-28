@@ -370,8 +370,17 @@ def add_news(url: str = Form(...), name: str = Form(""), content_selector: str =
              json.dumps(state, ensure_ascii=False), now_iso()),
         )
         conn.commit()
+        warn = []
+        sample = check["sample"] or {}
+        if selector and sample.get("selector_found") is False:
+            warn.append(f"Selektor „{selector}“ na stránce článku neexistuje – použije se obecná extrakce textu. "
+                        "Zkontroluj překlep (u news-pravda je to .article__text se dvěma podtržítky); "
+                        "web pak smaž a přidej znovu.")
+        if attr and sample and not sample.get("origin"):
+            warn.append(f"Atribut „{attr}“ s původním zdrojem jsem v ukázkovém článku nenašel.")
         return _redirect(msg=f"Web přidán. Feed: {check['feed']} ({check['entries']} položek). "
-                             "Zkontroluj ukázku vytaženého textu a propoj web s profilem.")
+                             "Zkontroluj ukázku vytaženého textu a propoj web s profilem.",
+                         err=" ".join(warn))
     finally:
         conn.close()
 

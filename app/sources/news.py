@@ -156,8 +156,32 @@ def _works(url: str, fresh_days: int | None = None) -> bool:
     return any(e["published"] and e["published"] >= cutoff for e in entries)
 
 
-def discover_feed(site_url: str) -> str | None:
-    if _works(site_url):
+def _path(url: str) -> str:
+    """Jen cesta adresy (bez domeny) – "news" v domene news-pravda.com neznamena news sitemapu."""
+    return urlparse(url).path.lower()
+
+
+def _try(url: str, errors: list, fresh_days: int | None = None) -> bool:
+    """Jako _works, ale duvod neuspechu zapise do errors (pro srozumitelnou hlasku)."""
+    try:
+        entries = parse_feed(url)
+    except Exception as e:
+        errors.append(f"{url}: {type(e).__name__}: {str(e)[:120]}")
+        return False
+    if not entries:
+        errors.append(f"{url}: zadne polozky")
+        return False
+    if fresh_days is not None:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=fresh_days)
+        if not any(e["published"] and e["published"] >= cutoff for e in entries):
+            errors.append(f"{url}: zadne polozky za poslednich {fresh_days} dni")
+            return False
+    return True
+
+
+def discover_feed(site_url: str, errors: list | None = None) -> str | None:
+    errors = [] if errors is None else errors
+    if _try(site_url, []):  # zadana adresa uz je feed (chybu neukladame – bezne je to HTML)
         return site_url
 
     parsed = urlparse(site_url)
@@ -169,11 +193,11 @@ def discover_feed(site_url: str) -> str | None:
         robots = _get(base + "/robots.txt").text
         sitemaps = [l.split(":", 1)[1].strip() for l in robots.splitlines()
                     if l.lower().startswith("sitemap:")]
-        for sm in sitemaps:
-            if "news" in sm.lower() and _works(sm):
-                return sm
-    except Exception:
-        pass
+    except Exception as e:
+        errors.append(f"{base}/robots.txt: {type(e).__name__}: {str(e)[:120]}")
+    for sm in sitemaps:
+        if "news" in _path(sm) and _try(sm, errors):
+            return sm
 
     # 2) <link rel="alternate" type="application/rss+xml"> na hlavni strance
     try:
@@ -182,22 +206,25 @@ def discover_feed(site_url: str) -> str | None:
             t = (link.get("type") or "").lower()
             if ("rss" in t or "atom" in t) and link.get("href"):
                 href = urljoin(site_url, link["href"])
-                if _works(href):
+                if _try(href, errors):
                     return href
-    except Exception:
-        pass
+    except Exception as e:
+        errors.append(f"{site_url}: {type(e).__name__}: {str(e)[:120]}")
 
     # 3) obvykle cesty RSS
     for p in COMMON_FEED_PATHS:
-        if _works(base + p):
+        if _try(base + p, []):  # vetsinou neexistuji – do hlasky nepatri
             return base + p
 
     # 4) ostatni sitemapy (clanky) – jen s cerstvymi polozkami, aby to nebyl archiv/kategorie
-    others = [sm for sm in sitemaps if "news" not in sm.lower() and not any(k in sm.lower() for k in SITEMAP_SKIP)]
-    others.sort(key=lambda sm: not any(k in sm.lower() for k in SITEMAP_ARTICLE_HINTS))
-    for sm in others + [base + p for p in COMMON_SITEMAP_PATHS]:
-        if _works(sm, fresh_days=60):
+    others = [sm for sm in sitemaps if "news" not in _path(sm) and not any(k in _path(sm) for k in SITEMAP_SKIP)]
+    others.sort(key=lambda sm: not any(k in _path(sm) for k in SITEMAP_ARTICLE_HINTS))
+    for sm in others:
+        if _try(sm, errors, fresh_days=60):
             return sm
+    for p in COMMON_SITEMAP_PATHS:
+        if _try(base + p, [], fresh_days=60):
+            return base + p
     return None
 
 
@@ -299,7 +326,7 @@ def archive_entries(source_url: str, since: datetime, until: datetime) -> list[d
     sitemaps = [l.split(":", 1)[1].strip() for l in robots.splitlines() if l.lower().startswith("sitemap:")]
     seen, out = set(), []
     for sm in sitemaps:
-        if any(k in sm.lower() for k in SITEMAP_SKIP) or "/en/" in sm:
+        if any(k in _path(sm) for k in SITEMAP_SKIP) or _path(sm).startswith("/en/"):
             continue
         try:
             entries = parse_feed(sm)
@@ -334,16 +361,29 @@ def check_site(url: str, content_selector: str | None = None, origin_attr: str |
 
     Vraci {feed, entries, sample: {url, title, text, origin}} nebo vyhodi ValueError.
     """
-    feed = discover_feed(url)
+    try:
+        _get(url)
+    except Exception as e:
+        raise ValueError(f"Stránku {url} nejde vůbec načíst ({type(e).__name__}: {str(e)[:150]}). "
+                         "Zkontroluj adresu a připojení; web může blokovat i antivir nebo síť.")
+    errors: list[str] = []
+    feed = discover_feed(url, errors)
     if not feed:
-        raise ValueError("Na webu jsem nenasel zadny feed (news sitemap, RSS ani Atom).")
+        detail = "; ".join(errors[:4]) or "robots.txt neuvádí sitemapu a stránka neodkazuje na RSS"
+        raise ValueError("Na webu jsem nenašel žádný feed (news sitemap, RSS, Atom ani sitemapu článků). "
+                         f"Zkoušel jsem: {detail}. Můžeš zadat přímo adresu feedu.")
     entries = parse_feed(feed)
     sample = None
     for e in entries[:3]:
         try:
             title, text, origin = fetch_article(e["url"], origin_attr, content_selector)
+            selector_found = None
+            if content_selector:
+                selector_found = BeautifulSoup(_get(e["url"], timeout=30).text, "html.parser").select_one(
+                    content_selector) is not None
         except Exception:
             continue
-        sample = {"url": e["url"], "title": e["title"] or title, "text": text, "origin": origin}
+        sample = {"url": e["url"], "title": e["title"] or title, "text": text, "origin": origin,
+                  "selector_found": selector_found}
         break
     return {"feed": feed, "entries": len(entries), "sample": sample}
