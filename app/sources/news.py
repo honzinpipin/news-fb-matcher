@@ -364,6 +364,9 @@ def check_site(url: str, content_selector: str | None = None, origin_attr: str |
     try:
         _get(url)
     except Exception as e:
+        if "ACCESS_DENIED" in str(e) or "TLSV1_ALERT" in str(e):
+            raise ValueError(f"Spojení se stránkou {url} zablokoval antivirus nebo síťový filtr (např. ESET – "
+                             "ochrana přístupu na web). Povol tuto doménu v jeho seznamu povolených adres, viz NAVOD.md.")
         raise ValueError(f"Stránku {url} nejde vůbec načíst ({type(e).__name__}: {str(e)[:150]}). "
                          "Zkontroluj adresu a připojení; web může blokovat i antivir nebo síť.")
     errors: list[str] = []

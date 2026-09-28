@@ -267,6 +267,7 @@ Data (`data\`) i klíče (`.env`) zůstanou zachované.
 | Žluté varování „Chybí OPENAI_API_KEY“ | Soubor `.env` chybí, je jinde než v kořeni projektu, nebo je klíč špatně zapsaný. Po opravě aplikaci restartuj. |
 | Bright Data: *Customer is not active* | Účet není ověřený, přidej platební metodu (kapitola 4.2). |
 | Běh skončil stavem `error` | Otevři stránku **Běhy**. V logu je napsáno, který krok selhal a proč. |
+| Web nejde přidat: *SSLError … TLSV1_ALERT_ACCESS_DENIED* / „zablokoval antivirus“ | Web blokuje antivirus. U ESETu: **F5 → Ochrana → Ochrana přístupu na web → Správa seznamu adres URL → Seznam povolených adres → Přidat** a zadej doménu, např. `*.news-pravda.com`. Povol jen tuto doménu, ochranu nevypínej. Pak aplikaci restartuj. |
 | Web nejde přidat („nenašel jsem feed“) | Web nemá RSS ani sitemapu. Zkus zadat přímo adresu jeho RSS feedu. |
 | `git clone` hlásí *Repository not found* | Repozitář je soukromý. Nejdřív přijmi pozvánku (kapitola 3.1) a přihlas se ke správnému GitHub účtu. Když se okno s přihlášením neukáže, spusť `git credential-manager github login`. |
 
