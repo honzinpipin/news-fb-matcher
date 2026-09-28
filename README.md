@@ -7,7 +7,7 @@ Porovnává články ze zpravodajského webu s příspěvky z Facebooku a hledá
 1. **Stažení.** Ze zpravodajských webů (feed se najde automaticky: news sitemap, RSS nebo Atom) se stáhnou nové články, u každého i původní zdroj (Telegram kanál), pokud ho web uvádí. Příspěvky veřejných FB stránek se stáhnou přes Bright Data. Stahuje se jen to, co je propojené (viz Zdroje a vazby).
 2. **Vrstva 1, AI extrakce.** Pro každý článek a příspěvek se jednou uloží shrnutí, hlavní teze, entity, klíčová slova, čísla a dva embeddingy.
 3. **Vrstva 2, skórování bez AI.** Páry článek × příspěvek propojených zdrojů v okně ±7 dní dostanou skóre ze signálů S1–S6 (viz `app/candidates.py`). Počítá se inkrementálně, jen s novými položkami.
-4. **Vrstva 3, AI posouzení.** Všechny páry se skóre ≥ 0,55 (`[judge] min_score`). Výstupem je verdikt, typ shody a zdůvodnění.
+4. **Vrstva 3, AI posouzení.** Všechny páry se skóre ≥ 0,50 (`[judge] min_score`). Výstupem je verdikt, typ shody a zdůvodnění.
 5. **Web.** Seznam shod, rozpad skóre, hodnocení 👍/👎 (ukládá se pro pozdější učení vah).
 
 ## Spuštění
