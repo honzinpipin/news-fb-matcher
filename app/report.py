@@ -312,6 +312,29 @@ def build_pdf(conn, data: dict, tp: dict, path, cfg: dict, tz) -> None:
                            ("LEFTPADDING", (0, 0), (-1, -1), 7)]))
     story += [t]
 
+    # Kdo byl u shod driv: dve velka cisla + pomerovy pruh
+    shody_all = [r for r in data["pairs"] if r["verdict"] == "shoda"]
+    if shody_all:
+        post_first = sum(1 for r in shody_all if r["first"] == "příspěvek")
+        art_first = len(shody_all) - post_first
+        c_post, c_art = PALETTE[0], PALETTE[1]
+        story.append(P("Co vyšlo u shod dřív", "h2"))
+        nums = Table([[
+            "", P(f"<b>{post_first}×</b>", "stat"), P(f"příspěvek byl dřív než článek ({round(100 * post_first / len(shody_all))} %)", "small"),
+            "", P(f"<b>{art_first}×</b>", "stat"), P(f"článek byl dřív než příspěvek ({round(100 * art_first / len(shody_all))} %)", "small"),
+        ]], colWidths=[3 * mm, 18 * mm, 69 * mm, 3 * mm, 18 * mm, 69 * mm])
+        nums.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                                  ("BACKGROUND", (0, 0), (0, 0), colors.HexColor(c_post)),
+                                  ("BACKGROUND", (3, 0), (3, 0), colors.HexColor(c_art)),
+                                  ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 2)]))
+        widths = [w for w in (post_first, art_first) if w]
+        cols = [c for c, w in ((c_post, post_first), (c_art, art_first)) if w]
+        bar = Table([[""] * len(widths)], colWidths=[180 * mm * w / len(shody_all) for w in widths], rowHeights=[5 * mm])
+        bar.setStyle(TableStyle([("BACKGROUND", (i, 0), (i, 0), colors.HexColor(col)) for i, col in enumerate(cols)]
+                                + [("LINEAFTER", (0, 0), (-2, 0), 2, colors.white)]))
+        story += [nums, Spacer(1, 3), bar,
+                  P(f"Z {len(shody_all)} shod v období; u každé shody níže je uvedeno, co vyšlo dřív.", "small")]
+
     # Zdroje
     story.append(P("Sledované zdroje", "h2"))
     rows = [[P("<b>Typ</b>"), P("<b>Název</b>"), P("<b>Adresa</b>"), P("<b>V období</b>")]]
