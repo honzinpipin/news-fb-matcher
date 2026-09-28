@@ -283,3 +283,42 @@ def delete_source(conn: sqlite3.Connection, source_id: int) -> None:
 
 def jl(s: str | None) -> list:
     return json.loads(s) if s else []
+
+
+def plan_link_backfill(conn: sqlite3.Connection, cfg: dict, news_id: int, fb_id: int) -> dict:
+    """Po nove vazbe naplanuje dotazeni obou zdroju na poslednich N dni (provede ho nejblizsi beh).
+
+    Web: state.backfill_from (dotahne se z archivnich sitemap). FB: state.backfill_start + backfill_done=False
+    (dotahne chybejici dny pred nejstarsim prispevkem). Kdyz uz zdroj obdobi pokryva, nic se neplanuje.
+    """
+    from datetime import date, datetime, time, timedelta
+    from zoneinfo import ZoneInfo
+
+    tz = ZoneInfo(cfg["app"]["timezone"])
+    days = cfg["news"].get("backfill_days", 7)
+    required = datetime.combine(date.today() - timedelta(days=days), time.min, tz)
+    req_iso = to_iso_utc(required)
+    planned = {}
+
+    state = get_state(conn, news_id)
+    covered = state.get("covered_from") or conn.execute(
+        "SELECT MIN(published_at) FROM items WHERE source_id = ?", (news_id,)).fetchone()[0]
+    if not covered or covered > req_iso:
+        set_state(conn, news_id, backfill_from=req_iso)
+        planned["news"] = required.date()
+
+    oldest = conn.execute("SELECT MIN(published_at) FROM items WHERE source_id = ? AND kind = 'post'",
+                          (fb_id,)).fetchone()[0]
+    fb_days = cfg["facebook"].get("backfill_days", days)
+    fb_required = datetime.combine(date.today() - timedelta(days=fb_days), time.min, tz)
+    if oldest and oldest > to_iso_utc(fb_required):
+        set_state(conn, fb_id, backfill_start=fb_required.date().isoformat(), backfill_done=False)
+        planned["facebook"] = fb_required.date()
+    elif not oldest:
+        planned["facebook"] = fb_required.date()  # prvni stazeni profilu vezme obdobi samo
+    return planned
+
+
+def to_iso_utc(dt) -> str:
+    from datetime import timezone
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat()

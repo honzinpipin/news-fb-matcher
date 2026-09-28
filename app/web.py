@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from . import ai, pipeline, report, search
 from .config import ROOT, load_config, now_iso, parse_iso
 from .candidates import score_new
-from .db import connect, delete_source, get_usage, jl, set_state
+from .db import connect, delete_source, get_usage, jl, plan_link_backfill, set_state
 from .sources import brightdata, news
 
 HERE = Path(__file__).resolve().parent
@@ -471,10 +471,17 @@ def add_link(news_id: int = Form(...), fb_id: int = Form(...)):
         conn.execute("UPDATE items SET scored_at = NULL WHERE status = 'ready' AND source_id IN (?, ?)",
                      (news_id, fb_id))
         conn.commit()
+        planned = plan_link_backfill(conn, cfg, news_id, fb_id)
     finally:
         conn.close()
-    _score_in_background()
-    return _redirect(msg="Vazba vytvořena. Nové zdroje se stáhnou a AI posoudí páry při dalším běhu (Spustit teď).")
+    what = [f"{'články' if k == 'news' else 'příspěvky'} od {v:%d. %m.}" for k, v in planned.items()]
+    started = pipeline.run_in_background("nova vazba")
+    if not started:
+        _score_in_background()
+    return _redirect(msg="Vazba vytvořena. "
+                         + (f"Dotáhnou se {' a '.join(what)}. " if what else "Data za poslední týden už jsou stažená. ")
+                         + ("Stahování a zpracování běží na pozadí (průběh na stránce Běhy)." if started
+                            else "Právě běží jiný běh – dotažení proběhne v dalším běhu (Spustit teď)."))
 
 
 @app.post("/links/delete")

@@ -33,6 +33,7 @@ Klíče se čtou ze souboru `.env` (není v gitu) nebo z proměnných prostřed�
 - **Zpravodajský web:** zadej URL. Aplikace hned najde feed, stáhne 1 článek na ukázku a ukáže vytažený text. Pod „Pokročilé“ lze zadat CSS selektor bloku s textem (když obecná extrakce bere i postranní bloky; u news-pravda `.article__text`) a HTML atribut s původním zdrojem (`data-source-url`).
 - **Facebook profil/stránka:** zadej URL. Ověří se stažením 1 příspěvku (1 záznam Bright Data) a doplní se název.
 - **Vazby:** vyber web a profil a propoj je. Porovnávají se jen propojené dvojice; jeden web může mít víc profilů a naopak. Zdroj bez vazby se nestahuje a nic nestojí.
+- **Po vytvoření vazby** se automaticky spustí běh, který dotáhne posledních 7 dní (`[news] backfill_days`, `[facebook] backfill_days`): články webu i z archivních sitemap, příspěvky profilu. Co už je stažené, se znovu nestahuje. Další běhy stahují jen nové položky.
 - **Vypnout** zastaví stahování (data zůstanou), **Smazat** odstraní zdroj včetně článků/příspěvků, obrázků, párů a posouzení.
 - Na hlavní stránce lze filtrovat shody podle vazby.
 
@@ -61,7 +62,7 @@ Index (SQLite FTS5) se obnovuje na konci každého běhu.
 ## Příspěvky z FB (Bright Data)
 
 - Scraper „Facebook – Pages Posts by Profile URL“ (`gd_lkaxegm826bjpoo9m5`), jen veřejná data, bez FB účtu.
-- První běh po propojení profilu stáhne 14 dní zpětně, pak každou noc jen nové příspěvky (od posledního uloženého; už uložené se posílají v `posts_to_not_include`, aby se neplatily znovu).
+- První běh po propojení profilu stáhne 7 dní zpětně, pak každou noc jen nové příspěvky (od posledního uloženého; už uložené se posílají v `posts_to_not_include`, aby se neplatily znovu).
 - Free kredit 5 000 záznamů měsíčně (obnova 1. v měsíci). Aplikace si spotřebu počítá, ve webu ukáže varování při 80 % a po vyčerpání stahování zastaví (`stop_at_free_limit`).
 - Surové odpovědi se ukládají do `data/fb_raw/`. Úloha, která nestihne doběhnout, se dokončí při dalším běhu.
 - Nastavení v `config.toml`, sekce `[facebook]`.

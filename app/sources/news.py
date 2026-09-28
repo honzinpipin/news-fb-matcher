@@ -14,6 +14,7 @@ import re
 import time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
+from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin, urlparse
@@ -22,7 +23,8 @@ import requests
 import trafilatura
 from bs4 import BeautifulSoup
 
-from ..config import now_iso, to_iso
+from ..config import now_iso, parse_iso, to_iso
+from ..db import get_state, set_state
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) news-fb-matcher/1.0 (osobni pouziti)"
 COMMON_FEED_PATHS = ["/rss", "/feed", "/rss.xml", "/feed.xml", "/atom.xml", "/rss/", "/feed/"]
@@ -252,9 +254,36 @@ def fetch_article(url: str, origin_attr: str | None = None,
     return (clean(meta.title) if meta and meta.title else None), clean(text), origin
 
 
-def ingest(conn, source, cfg: dict, log) -> int:
-    """Stahne nove clanky jednoho zdroje. Vraci pocet pridanych."""
+def backfill(conn, source, cfg: dict, log) -> int:
+    """Dotazeni obdobi po nove vazbe (sources.state["backfill_from"]) z archivnich sitemap webu.
+
+    Po dokonceni se ulozi covered_from = od kdy ma zdroj kompletni clanky.
+    """
+    state = get_state(conn, source["id"])
+    if not state.get("backfill_from"):
+        return 0
     ncfg = cfg["news"]
+    since = parse_iso(state["backfill_from"])
+    day = since.astimezone(ZoneInfo(cfg["app"]["timezone"])).date()
+    known = {r[0] for r in conn.execute("SELECT url FROM items WHERE kind = 'article'")}
+    try:
+        entries = [e for e in archive_entries(source["url"], since, datetime.now(timezone.utc))
+                   if e["url"] not in known]
+    except Exception as e:
+        log(f"  dotazeni od {day} selhalo ({e}), zkusim pri dalsim behu")
+        return 0
+    entries = entries[: ncfg.get("backfill_max_articles", 5000)]
+    log(f"  dotahuji clanky od {day}: {len(entries)} chybejicich")
+    added = store_entries(conn, source, entries, cfg, log, workers=ncfg.get("backfill_workers", 4)) if entries else 0
+    covered = min(filter(None, [state.get("covered_from"), state["backfill_from"]]))
+    set_state(conn, source["id"], backfill_from=None, covered_from=covered)
+    return added
+
+
+def ingest(conn, source, cfg: dict, log) -> int:
+    """Stahne nove clanky jednoho zdroje (vcetne pripadneho dotazeni po nove vazbe). Vraci pocet pridanych."""
+    ncfg = cfg["news"]
+    added = backfill(conn, source, cfg, log)
     feed = source["feed_url"]
     entries = None
     if feed:
@@ -267,7 +296,7 @@ def ingest(conn, source, cfg: dict, log) -> int:
         feed = discover_feed(source["url"])
         if not feed:
             log(f"  {source['name']}: nenasel jsem zadny feed na {source['url']}")
-            return 0
+            return added
         log(f"  {source['name']}: pouzivam feed {feed}")
         conn.execute("UPDATE sources SET feed_url = ? WHERE id = ?", (feed, source["id"]))
         conn.commit()
@@ -275,14 +304,14 @@ def ingest(conn, source, cfg: dict, log) -> int:
 
     # U noveho webu uvodni obdobi (jako u FB), jinak jen posledni dny.
     has_items = conn.execute("SELECT 1 FROM items WHERE source_id = ? LIMIT 1", (source["id"],)).fetchone()
-    days = ncfg["lookback_days"] if has_items else ncfg.get("first_lookback_days", 14)
+    days = ncfg["lookback_days"] if has_items else ncfg.get("first_lookback_days", 7)
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     known = {r[0] for r in conn.execute("SELECT url FROM items WHERE kind = 'article'")}
     # Polozky bez data bereme jen z kratkych feedu (RSS); u velke sitemapy by to byl cely archiv.
     allow_undated = len(entries) <= 100
     fresh = [e for e in entries if e["url"] not in known
              and (e["published"] >= cutoff if e["published"] else allow_undated)]
-    return store_entries(conn, source, fresh[: ncfg["max_new_per_run"]], cfg, log)
+    return added + store_entries(conn, source, fresh[: ncfg["max_new_per_run"]], cfg, log)
 
 
 def store_entries(conn, source, entries: list[dict], cfg: dict, log, workers: int = 1) -> int:

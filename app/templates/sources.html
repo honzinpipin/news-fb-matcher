@@ -63,6 +63,7 @@
     <div class="source-head">
       <strong>{{ s.name }}</strong>
       {% if not s.enabled %}<span class="tag">vypnutý</span>{% elif not s.n_links %}<span class="tag">bez vazby – nestahuje se</span>{% endif %}
+      {% if s.state.backfill_from %}<span class="tag">dotáhne se od {{ s.state.backfill_from|local_date }}</span>{% endif %}
     </div>
     <small><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.url }}</a></small><br>
     <small>feed: {{ s.feed_url or '—' }}</small><br>
@@ -89,7 +90,7 @@
     <label>URL profilu nebo stránky<input name="url" required placeholder="https://www.facebook.com/…"></label>
     <label>Název (nepovinné)<input name="name" placeholder="doplní se při ověření"></label>
     <button class="btn primary">Přidat profil</button>
-    <small class="muted">Ověření stáhne 1 příspěvek (1 záznam Bright Data). První běh po propojení stáhne 14 dní zpětně.</small>
+    <small class="muted">Ověření stáhne 1 příspěvek (1 záznam Bright Data). Po propojení s webem se automaticky stáhne posledních 7 dní.</small>
   </form>
 
   {% for s in fb %}
@@ -99,6 +100,7 @@
       {% if s.state.verify == 'pending' %}<span class="tag">ověřuji…</span>
       {% elif s.state.verify == 'error' %}<span class="tag bad">ověření selhalo</span>
       {% elif s.state.verify == 'ok' %}<span class="tag good">ověřeno</span>{% endif %}
+      {% if s.state.backfill_done == false and s.state.backfill_start %}<span class="tag">dotáhne se od {{ s.state.backfill_start }}</span>{% endif %}
       {% if not s.enabled %}<span class="tag">vypnutý</span>{% elif not s.n_links %}<span class="tag">bez vazby – nestahuje se</span>{% endif %}
     </div>
     <small><a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.url }}</a></small><br>

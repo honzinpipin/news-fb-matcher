@@ -175,17 +175,13 @@ Databáze je na začátku prázdná. Postupuj takto:
      - atribut s původním zdrojem: `data-source-url`
 2. **Zdroje → Facebook profily:** vlož adresu veřejné FB stránky a klikni **Přidat profil**. Ověření (stažení 1 příspěvku) trvá asi minutu.
 3. **Zdroje → Vazby:** vyber web a profil a klikni **Propojit**. Porovnávají se jen propojené dvojice.
-4. Klikni vpravo nahoře na **Spustit teď**. První běh stáhne:
-   - příspěvky z posledních 14 dní,
-   - články, které web aktuálně nabízí (u news-pravda posledních 48 hodin),
-   - pak proběhne AI zpracování.
-
-   Trvá to 20–40 minut. Průběh uvidíš na stránce **Běhy**.
+   **Po propojení se automaticky spustí stažení dat za posledních 7 dní:** příspěvky profilu i články webu (u news-pravda i starší články z archivu webu). Průběh uvidíš na stránce **Běhy**. U news-pravda jde asi o 3 000 článků, stahování a AI zpracování trvá 30–60 minut.
+4. Potom už stačí **Spustit teď** (nebo noční běh, kapitola 8). Každý další běh stáhne jen to, co ještě stažené není.
 5. Výsledky najdeš na stránce **Shody**, týdenní PDF shrnutí na stránce **Shrnutí** (tlačítko **Vytvořit**).
 
-### Nepovinné: dotažení starších článků
+### Nepovinné: dotažení ještě starších článků
 
-Když chceš hned porovnat celý uplynulý týden, spusť v **novém** okně PowerShellu (web může běžet dál):
+Poslední týden se dotáhne sám po propojení (bod 3). Když chceš i starší období, spusť v **novém** okně PowerShellu (web může běžet dál):
 
 ```powershell
 cd $HOME\Documents\news-fb-matcher
@@ -234,7 +230,7 @@ Register-ScheduledTask -TaskName "news-fb-matcher" -Action $action -Trigger $tri
 
 | Služba | Za co | Orientačně |
 |---|---|---|
-| OpenAI | AI rozbor článků a příspěvků, posouzení shod, report | ~0,8 mil. tokenů denně při ~450 článcích (news-pravda); dotažení týdne zpětně ~3 mil. |
+| OpenAI | AI rozbor článků a příspěvků, posouzení shod, report | ~0,8 mil. tokenů denně při ~450 článcích (news-pravda); po nové vazbě jednorázově ~3 mil. (týden zpětně) |
 | Bright Data | příspěvky z FB | ~20–30 příspěvků denně = zdarma v rámci 5 000 záznamů měsíčně |
 | Telegram | zjištění ID kanálů | zdarma |
 

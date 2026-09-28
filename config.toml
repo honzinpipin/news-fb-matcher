@@ -13,9 +13,9 @@ timezone = "Europe/Prague"
 [facebook]
 provider = "brightdata"
 dataset_id = "gd_lkaxegm826bjpoo9m5" # Facebook - Pages Posts by Profile URL
-backfill_days = 14                 # pri prvnim behu stahnout 14 dni zpetne
+backfill_days = 7                  # po nove vazbe / prvnim behu stahnout 7 dni zpetne
 max_posts_per_run = 150            # pojistka (bezne ~15–30 prispevku denne)
-backfill_max_posts = 600           # limit pro uvodni stazeni 14 dni
+backfill_max_posts = 600           # limit pro uvodni stazeni
 monthly_free_records = 5000        # free kredit Bright Data, obnovuje se 1. v mesici
 stop_at_free_limit = true          # po vycerpani free kreditu nestahovat (nic neplatit)
 warn_at = 0.8                      # varovani ve webu pri 80 % kreditu
@@ -25,7 +25,10 @@ timeout_min = 30
 
 [news]
 lookback_days = 3          # jak stare clanky z feedu se jeste stahuji
-first_lookback_days = 14   # u nove pridaneho webu stahnout 14 dni zpetne (pokud je feed ma)
+first_lookback_days = 7    # u noveho webu 7 dni zpetne (po nove vazbe se dotahne i z archivu webu)
+backfill_days = 7          # po nove vazbe dotahnout clanky tolik dni zpetne (z archivnich sitemap)
+backfill_max_articles = 5000  # pojistka pro dotazeni (news-pravda ma ~450 clanku denne)
+backfill_workers = 4       # soubezna stahovani pri dotazeni
 max_new_per_run = 1000     # pojistka; news-pravda vydava ~440 clanku denne
 request_delay_s = 0.5      # pauza mezi stahovanim clanku (slusnost k serveru)
 min_text_chars = 200       # kratsi text z clanku -> pouzije se perex z feedu
@@ -44,7 +47,7 @@ api_key = ""  # nepouzivat – klic patri do .env (OPENAI_API_KEY)
 [extract]
 min_chars = 20             # kratsi prispevky (jen fotka, emoji) se preskoci
 max_input_chars = 12000
-max_per_run = 1200          # ~440 clanku + ~30 prispevku denne; prvni beh ~900
+max_per_run = 5000          # pojistka; dotazeni tydne u news-pravda ~3 000 clanku, bezne ~450 denne
 workers = 4
 
 # ---------------------------------------------------------------------------
