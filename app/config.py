@@ -27,16 +27,17 @@ def _dotenv() -> dict:
 
 
 def env(name: str) -> str | None:
-    """Tajny klic: promenna prostredi, na Windows i uzivatelsky registr (setx), jinak soubor .env."""
-    val = os.environ.get(name)
-    if not val and os.name == "nt":
+    """Tajny klic: na Windows nejdriv aktualni hodnota z uzivatelskeho registru (setx – projevi se bez
+    restartu; promenna v bezicim procesu muze byt zastarala), pak promenna prostredi, pak soubor .env."""
+    val = None
+    if os.name == "nt":
         try:
             import winreg
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
                 val = winreg.QueryValueEx(key, name)[0]
         except OSError:
             val = None
-    return val or _dotenv().get(name) or None
+    return val or os.environ.get(name) or _dotenv().get(name) or None
 
 
 def db_path(cfg: dict) -> Path:
