@@ -384,8 +384,7 @@ def build_pdf(conn, data: dict, tp: dict, path, cfg: dict, tz) -> None:
         t = Table(rows, colWidths=[62 * mm, 32 * mm, 28 * mm, 28 * mm, 30 * mm])
         t.setStyle(grid)
         t.setStyle(TableStyle(head))
-        story += [t, P(f"Příspěvky od začátku měsíce do {end:%d. %m. %Y}; ve shodě = aspoň jedna shoda "
-                       "(verdikt AI „shoda“) s článkem propojeného webu.", "small")]
+        story.append(t)
 
     # Zdroje
     story.append(P("Sledované zdroje", "h2"))
@@ -398,17 +397,12 @@ def build_pdf(conn, data: dict, tp: dict, path, cfg: dict, tz) -> None:
     t.setStyle(grid)
     t.setStyle(TableStyle(head))
     story.append(t)
-    if data["links"]:
-        story.append(Spacer(1, 4))
-        story.append(P("Porovnávané dvojice: " + "; ".join(f'{_esc(l["news_name"])} ↔ {_esc(l["fb_name"])}'
-                                                           for l in data["links"]), "small"))
 
     # Obsah shod
     story.append(P("Co je obsahem shod", "h2"))
     if tp["overview"]:
         for para in [x.strip() for x in tp["overview"].split("\n\n") if x.strip()]:
             story.append(P(_esc(para), "body"))
-        story.append(P("Shrnutí a témata vytvořila AI z párů „shoda“ a „související téma“.", "small"))
     elif not data["pairs"]:
         story.append(P("V tomto období nebyla nalezena žádná shoda ani související téma.", "body"))
 
@@ -430,9 +424,7 @@ def build_pdf(conn, data: dict, tp: dict, path, cfg: dict, tz) -> None:
         row.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
         story += [row, KeepTogether([
             P("Vývoj témat v čase", "h2"),
-            Image(bar_chart(data["pairs"], tp["chart"], data["start"], data["end"], tz), width=180 * mm, height=75 * mm),
-            P("Počet párů podle dne, kdy vyšla novější z obou položek. Grafy ukazují 5 největších témat, "
-              "menší témata jsou sloučena do „Ostatní“ (šedě i v tabulce).", "small")])]
+            Image(bar_chart(data["pairs"], tp["chart"], data["start"], data["end"], tz), width=180 * mm, height=75 * mm)])]
 
     # Shody podrobne
     shody = [r for r in data["pairs"] if r["verdict"] == "shoda"]
