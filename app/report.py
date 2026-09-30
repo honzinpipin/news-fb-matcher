@@ -60,6 +60,44 @@ ORDER BY (j.verdict = 'shoda') DESC, m.score DESC
 """
 
 
+MONTHS_CZ = ["leden", "únor", "březen", "duben", "květen", "červen", "červenec", "srpen", "září", "říjen",
+             "listopad", "prosinec"]
+
+
+def profile_month_stats(conn, cfg: dict, start: datetime, end: datetime, tz) -> list[dict]:
+    """Pro kazdy propojeny FB profil a kazdy mesic, do ktereho obdobi zasahuje: vsechny prispevky
+    (od zacatku mesice do konce obdobi) a kolik z nich je aspon v jedne shode s clankem propojeneho webu."""
+    out = []
+    for fb in conn.execute(
+        """SELECT DISTINCT f.id, f.name FROM source_links l JOIN sources f ON f.id = l.fb_id
+           JOIN sources n ON n.id = l.news_id WHERE f.enabled = 1 AND n.enabled = 1 ORDER BY f.name"""
+    ).fetchall():
+        matched = {r[0] for r in conn.execute(
+            """SELECT DISTINCT m.post_id FROM matches m
+               JOIN judgements j ON j.article_id = m.article_id AND j.post_id = m.post_id
+               JOIN items a ON a.id = m.article_id
+               JOIN source_links l ON l.news_id = a.source_id AND l.fb_id = ?
+               WHERE j.verdict = 'shoda' AND m.score >= ?""",
+            (fb["id"], cfg["judge"]["min_score"]),
+        )}
+        month_start = start.astimezone(tz).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        months: dict[str, dict] = {}
+        for pid, pub in conn.execute(
+            "SELECT id, published_at FROM items WHERE source_id = ? AND kind = 'post' AND published_at BETWEEN ? AND ?",
+            (fb["id"], to_iso(month_start), to_iso(end)),
+        ):
+            dt = parse_iso(pub).astimezone(tz)
+            m = months.setdefault(f"{dt:%Y-%m}", {"profile": fb["name"], "label": f"{MONTHS_CZ[dt.month - 1]} {dt.year}",
+                                                   "posts": 0, "matched": 0})
+            m["posts"] += 1
+            m["matched"] += pid in matched
+        for key in sorted(months):
+            m = months[key]
+            m["pct"] = 100 * m["matched"] / m["posts"] if m["posts"] else 0.0
+            out.append(m)
+    return out
+
+
 def collect(conn, cfg: dict, start: datetime, end: datetime) -> dict:
     s, e = to_iso(start), to_iso(end)
     rows = [dict(r) for r in conn.execute(PAIRS_SQL, (cfg["judge"]["min_score"], s, e))]
@@ -334,6 +372,20 @@ def build_pdf(conn, data: dict, tp: dict, path, cfg: dict, tz) -> None:
                                 + [("LINEAFTER", (0, 0), (-2, 0), 2, colors.white)]))
         story += [nums, Spacer(1, 3), bar,
                   P(f"Z {len(shody_all)} shod v období; u každé shody níže je uvedeno, co vyšlo dřív.", "small")]
+
+    # Kolik prispevku profilu bylo ve shode (za mesic)
+    monthly = profile_month_stats(conn, cfg, data["start"], data["end"], tz)
+    if monthly:
+        story.append(P("Příspěvky profilů ve shodě s články", "h2"))
+        rows = [[P("<b>Profil</b>"), P("<b>Měsíc</b>"), P("<b>Příspěvků</b>"), P("<b>Ve shodě</b>"), P("<b>Podíl</b>")]]
+        for m in monthly:
+            rows.append([P(_esc(m["profile"])), P(m["label"]), P(str(m["posts"])), P(str(m["matched"])),
+                         P(f'<b>{m["pct"]:.1f} %</b>'.replace(".", ","))])
+        t = Table(rows, colWidths=[62 * mm, 32 * mm, 28 * mm, 28 * mm, 30 * mm])
+        t.setStyle(grid)
+        t.setStyle(TableStyle(head))
+        story += [t, P(f"Příspěvky od začátku měsíce do {end:%d. %m. %Y}; ve shodě = aspoň jedna shoda "
+                       "(verdikt AI „shoda“) s článkem propojeného webu.", "small")]
 
     # Zdroje
     story.append(P("Sledované zdroje", "h2"))
